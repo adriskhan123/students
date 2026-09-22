@@ -1,12 +1,17 @@
 import mongoose from "mongoose";
 
-async function dpconnection() {
+
+
+
+const dpconnection = async () => {
   try {
-    await mongoose.connect("mongodb://localhost:27017/project");
-    console.log("MongoDB connected successfully");
+    await mongoose.connect("mongodb://localhost:27017/users");
+    console.log("Database connected successfully");
   } catch (error) {
-    console.log("MONGODB CONNECTION ERROR:", error);
+    console.log("Database connection failed:", error);
   }
-}
+};
+
+
 
 export default dpconnection;

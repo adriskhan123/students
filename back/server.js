@@ -1,19 +1,39 @@
+
 import express from "express";
 import cors from "cors";
 import dpconnection from "./dp/dpconnection.js";
-import categeryRoutes from "./routes/categery.routes.js";
+import userroute from "./route/user.route.js";
+import projectsroute from "./route/projects.route.js";
+import cookieParser from "cookie-parser";
+import dotenv from "dotenv";
+import memberroute from "./route/member.route.js";
+
+dotenv.config();
 
 const app = express();
 
-app.use(cors());
+// CORS
+app.use(
+  cors({
+    origin: process.env.frontend_url,
+    credentials: true,
+  })
+);
 
+// Middleware
+app.use(cookieParser());
 app.use(express.json());
 
+// Database
 dpconnection();
 
-app.use("/categery", categeryRoutes);
+// Routes
+app.use("/user", userroute);
+app.use("/projects", projectsroute);
+app.use("/member", memberroute);
 
-app.listen(3000, () => {
+// Server
+app.listen(process.env.PORT || 3000, () => {
   console.log("Server running on port 3000");
 });
 
