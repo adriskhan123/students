@@ -105,7 +105,7 @@ function Home() {
               <h1 className="text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl">
                 Need Skilled Work?
                 <span className="mt-2 block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text pb-2 text-transparent">
-                  Find the Right Person.
+                  Find <The></The> Right Person.
                 </span>
               </h1>
 
