@@ -1,20 +1,20 @@
 
-import React, { useState } from "react";
-import {
-  User,
-  Mail,
-  Phone,
-  Lock,
-  MapPin,
-  Eye,
-  EyeOff,
-  UserPlus,
-  Users,
-} from "lucide-react";
 import axios from "axios";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  UserPlus,
+  Loader2,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
+
+const API = import.meta.env.VITE_backend_base_url;
 
 function Register() {
-  const [formData, setFormData] = useState({
+  const navigate = useNavigate();
+
+  const [data, setData] = useState({
     name: "",
     fatherName: "",
     email: "",
@@ -26,335 +26,345 @@ function Register() {
     role: "user",
   });
 
-  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // ================= HANDLE CHANGE =================
   const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setData({
+      ...data,
+      [e.target.name]: e.target.value,
+    });
   };
 
-  // ================= REGISTER =================
-  const handleRegister = async (e) => {
+  async function handleRegister(e) {
     e.preventDefault();
-
-    console.log("Register Data:", formData);
+    setError("");
 
     try {
+      setLoading(true);
+
       const response = await axios.post(
-        `${import.meta.env.VITE_backend_base_url}/user/userdata`,
-        formData
+        `${API}/user/userdata`,
+        data,
+        {
+          withCredentials: true,
+        }
       );
 
-      console.log(response);
+      if (!response.data.success) {
+        setError(
+          response.data.msg || "Registration failed."
+        );
+        return;
+      }
 
-      if (response.data.success === true) {
-        alert("Registration successful!");
+      const registeredRole =
+        response.data.role ||
+        response.data.data?.role ||
+        data.role;
 
-        setFormData({
-          name: "",
-          fatherName: "",
-          email: "",
-          phone: "",
-          age: "",
-          address: "",
-          city: "",
-          password: "",
-          role: "user",
+      if (registeredRole === "admin") {
+        navigate("/present-skilled", {
+          replace: true,
         });
       } else {
-        alert(response.data.msg || "Registration failed");
+        navigate("/add-skilled", {
+          replace: true,
+        });
       }
-    } catch (error) {
-      console.log("Register Error:", error);
-
-      alert(
-        error.response?.data?.msg || "Something went wrong. Please try again."
+    } catch (err) {
+      console.log(
+        "Register error:",
+        err.response?.data || err.message
       );
+
+      setError(
+        err.code === "ERR_NETWORK"
+          ? "Backend server is not running."
+          : err.response?.data?.msg ||
+            "Registration failed."
+      );
+    } finally {
+      setLoading(false);
     }
-  };
+  }
+
+  const input =
+    "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10";
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-3xl">
+    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8">
+      <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
 
-        {/* ================= HEADING ================= */}
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg">
-            <UserPlus size={28} />
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
+            <UserPlus size={26} />
           </div>
 
-          <h1 className="text-3xl font-bold text-slate-900">
+          <h1 className="text-3xl font-black text-slate-900">
             Create Account
           </h1>
 
           <p className="mt-2 text-sm text-slate-500">
-            Create your SkillConnect account
+            Join SkillConnect today.
           </p>
         </div>
 
-        {/* ================= CARD ================= */}
-        <div className="rounded-2xl bg-white p-6 sm:p-8 shadow-xl border border-slate-200">
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {error}
+          </div>
+        )}
 
-          <form onSubmit={handleRegister} className="space-y-5">
+        <form
+          onSubmit={handleRegister}
+          className="space-y-5"
+        >
 
-            {/* ================= NAME + FATHER NAME ================= */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-slate-700">
+              Register As
+            </label>
 
-              {/* NAME */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Full Name
-                </label>
+            <div className="grid grid-cols-2 gap-3">
 
-                <div className="relative">
-                  <User
-                    size={20}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                  />
+              <button
+                type="button"
+                onClick={() =>
+                  setData({
+                    ...data,
+                    role: "user",
+                  })
+                }
+                className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition ${
+                  data.role === "user"
+                    ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50"
+                }`}
+              >
+                <UserRound size={18} />
+                User
+              </button>
 
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="Enter your name"
-                    required
-                    className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                  />
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setData({
+                    ...data,
+                    role: "admin",
+                  })
+                }
+                className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition ${
+                  data.role === "admin"
+                    ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50"
+                }`}
+              >
+                <ShieldCheck size={18} />
+                Admin
+              </button>
 
-              {/* FATHER NAME */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Father Name
-                </label>
-
-                <input
-                  type="text"
-                  name="fatherName"
-                  value={formData.fatherName}
-                  onChange={handleChange}
-                  placeholder="Enter father name"
-                  required
-                  className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 px-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                />
-              </div>
             </div>
+          </div>
 
-            {/* ================= EMAIL + PHONE ================= */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid gap-4 sm:grid-cols-2">
 
-              {/* EMAIL */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Email Address
-                </label>
-
-                <div className="relative">
-                  <Mail
-                    size={20}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                  />
-
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="Enter your email"
-                    required
-                    className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                  />
-                </div>
-              </div>
-
-              {/* PHONE */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Phone Number
-                </label>
-
-                <div className="relative">
-                  <Phone
-                    size={20}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                  />
-
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    placeholder="03XX XXXXXXX"
-                    required
-                    className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* ================= AGE + CITY ================= */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-
-              {/* AGE */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Age
-                </label>
-
-                <input
-                  type="number"
-                  name="age"
-                  value={formData.age}
-                  onChange={handleChange}
-                  placeholder="Enter your age"
-                  min="1"
-                  required
-                  className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 px-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                />
-              </div>
-
-              {/* CITY */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  City
-                </label>
-
-                <div className="relative">
-                  <MapPin
-                    size={20}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                  />
-
-                  <select
-                    name="city"
-                    value={formData.city}
-                    onChange={handleChange}
-                    required
-                    className="w-full appearance-none rounded-xl border border-slate-300 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                  >
-                    <option value="">Select city</option>
-                    <option value="Bannu">Bannu</option>
-                    <option value="Peshawar">Peshawar</option>
-                    <option value="Islamabad">Islamabad</option>
-                    <option value="Lahore">Lahore</option>
-                    <option value="Karachi">Karachi</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* ================= ADDRESS ================= */}
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Address
+                Full Name
               </label>
 
               <input
                 type="text"
-                name="address"
-                value={formData.address}
+                name="name"
+                value={data.name}
                 onChange={handleChange}
-                placeholder="Enter your address"
+                placeholder="Enter your name"
+                className={input}
                 required
-                className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 px-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
               />
             </div>
 
-            {/* ================= ROLE ================= */}
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Account Role
+                Father Name
               </label>
 
-              <div className="relative">
-                <Users
-                  size={20}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                />
-
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  required
-                  className="w-full appearance-none rounded-xl border border-slate-300 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
+              <input
+                type="text"
+                name="fatherName"
+                value={data.fatherName}
+                onChange={handleChange}
+                placeholder="Enter father name"
+                className={input}
+              />
             </div>
 
-            {/* ================= PASSWORD ================= */}
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Password
-              </label>
-
-              <div className="relative">
-                <Lock
-                  size={20}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                />
-
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Create a password"
-                  required
-                  className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pl-10 pr-12 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
-                >
-                  {showPassword ? (
-                    <EyeOff size={20} />
-                  ) : (
-                    <Eye size={20} />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* ================= BUTTON ================= */}
-            <button
-              type="submit"
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700 hover:shadow-xl active:scale-[0.98]"
-            >
-              <UserPlus size={19} />
-              Create Account
-            </button>
-
-          </form>
-
-          {/* ================= LOGIN ================= */}
-          <div className="mt-6 text-center text-sm text-slate-500">
-            Already have an account?{" "}
-
-            <a
-              href="/"
-              className="font-semibold text-blue-600 hover:text-blue-700"
-            >
-              Login
-            </a>
           </div>
 
-        </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Email
+              </label>
+
+              <input
+                type="email"
+                name="email"
+                value={data.email}
+                onChange={handleChange}
+                placeholder="example@email.com"
+                className={input}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Phone
+              </label>
+
+              <input
+                type="tel"
+                name="phone"
+                value={data.phone}
+                onChange={handleChange}
+                placeholder="03XXXXXXXXX"
+                className={input}
+              />
+            </div>
+
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Age
+              </label>
+
+              <input
+                type="number"
+                name="age"
+                value={data.age}
+                onChange={handleChange}
+                placeholder="Age"
+                className={input}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                City
+              </label>
+
+              <input
+                type="text"
+                name="city"
+                value={data.city}
+                onChange={handleChange}
+                placeholder="Bannu"
+                className={input}
+              />
+            </div>
+
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-slate-700">
+              Address
+            </label>
+
+            <input
+              type="text"
+              name="address"
+              value={data.address}
+              onChange={handleChange}
+              placeholder="Enter your address"
+              className={input}
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-slate-700">
+              Password
+            </label>
+
+            <input
+              type="password"
+              name="password"
+              value={data.password}
+              onChange={handleChange}
+              placeholder="Create a password"
+              className={input}
+              required
+            />
+          </div>
+
+          <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4">
+            {data.role === "admin" ? (
+              <ShieldCheck
+                size={20}
+                className="mt-0.5 shrink-0 text-blue-600"
+              />
+            ) : (
+              <UserRound
+                size={20}
+                className="mt-0.5 shrink-0 text-blue-600"
+              />
+            )}
+
+            <p className="text-xs leading-5 text-blue-800">
+              You are creating a{" "}
+              <span className="font-bold">
+                {data.role === "admin"
+                  ? "Admin"
+                  : "User"}
+              </span>{" "}
+              account.
+            </p>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? (
+              <>
+                <Loader2
+                  size={19}
+                  className="animate-spin"
+                />
+                Creating Account...
+              </>
+            ) : (
+              <>
+                <UserPlus size={19} />
+                Create{" "}
+                {data.role === "admin"
+                  ? "Admin"
+                  : "User"}{" "}
+                Account
+              </>
+            )}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-slate-500">
+          Already have an account?{" "}
+          <Link
+            to="/login"
+            className="font-bold text-blue-600 hover:text-blue-700 hover:underline"
+          >
+            Login
+          </Link>
+        </p>
       </div>
     </div>
   );
 }
 
 export default Register;
+

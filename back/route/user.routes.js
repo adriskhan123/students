@@ -1,4 +1,3 @@
-
 import express from "express";
 import usermodels from "../models/user.models.js";
 import jwt from "jsonwebtoken";
@@ -7,73 +6,181 @@ import dpconnection from "../dp/dpconnection.js";
 
 const route = express.Router();
 
-const JWT_SECRET = "123";
+const JWT_SECRET = process.env.JWT_SECRET || "123";
 
-// ================= REGISTER =================
+// ======================================================
+// AUTH MIDDLEWARE
+// ======================================================
+
+const authMiddleware = (req, res, next) => {
+  try {
+    const token = req.cookies?.["stc-operator"];
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        msg: "Not authenticated. Please login.",
+      });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    req.user = decoded;
+
+    next();
+  } catch (error) {
+    console.log("AUTH ERROR:", error);
+
+    return res.status(401).json({
+      success: false,
+      msg: "Invalid or expired token.",
+    });
+  }
+};
+
+// ======================================================
+// ADMIN MIDDLEWARE
+// ======================================================
+
+const adminMiddleware = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      msg: "Not authenticated.",
+    });
+  }
+
+  if (String(req.user.role).toLowerCase() !== "admin") {
+    return res.status(403).json({
+      success: false,
+      msg: "Only admin users are allowed.",
+    });
+  }
+
+  next();
+};
+
+// ======================================================
+// NORMAL USER MIDDLEWARE
+// ======================================================
+
+const userMiddleware = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      msg: "Not authenticated.",
+    });
+  }
+
+  if (String(req.user.role).toLowerCase() !== "user") {
+    return res.status(403).json({
+      success: false,
+      msg: "Only normal users are allowed.",
+    });
+  }
+
+  next();
+};
+
+// ======================================================
+// REGISTER
+// POST /user/userdata
+// ======================================================
 
 route.post("/userdata", async (req, res) => {
   try {
     await dpconnection();
 
-    const { email, name, role, password } = req.body;
+    const {
+      email,
+      password,
+      name,
+      fatherName,
+      phone,
+      age,
+      address,
+      city,
+    } = req.body;
 
-    if (!email || !name || !role || !password) {
+    if (!email || !password || !name) {
       return res.status(400).json({
         success: false,
-        msg: "All fields are required",
+        msg: "Name, email and password are required.",
       });
     }
 
-    const existingUser = await usermodels.findOne({ email });
+    const cleanEmail = email.trim().toLowerCase();
+
+    const existingUser = await usermodels.findOne({
+      email: cleanEmail,
+    });
 
     if (existingUser) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
-        msg: "Email already registered",
+        msg: "Email is already registered.",
       });
     }
 
     const hashpassword = await bcrypt.hash(password, 10);
 
+    // Public registration is always a normal user
     const newUser = await usermodels.create({
-      email,
-      name,
-      role,
+      email: cleanEmail,
       password: hashpassword,
+      name: name.trim(),
+      fatherName,
+      phone,
+      age,
+      address,
+      city,
+      role: "user",
     });
 
-    const tokenData = {
-      id: newUser._id,
-      role: newUser.role,
-    };
-
-    const token = jwt.sign(tokenData, JWT_SECRET);
+    const token = jwt.sign(
+      {
+        id: newUser._id,
+        role: "user",
+      },
+      JWT_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
 
     res.cookie("stc-operator", token, {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return res.json({
+    return res.status(201).json({
       success: true,
-      msg: "User registered successfully",
-      data: newUser,
+      msg: "User registered successfully.",
+      role: "user",
+      data: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+      },
     });
-
   } catch (error) {
-    console.log(error);
+    console.log("REGISTER ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      msg: "User registration failed",
+      msg: "User registration failed.",
       error: error.message,
     });
   }
 });
 
-
-// ================= LOGIN =================
+// ======================================================
+// LOGIN
+// POST /user/signupdata
+// ======================================================
 
 route.post("/signupdata", async (req, res) => {
   try {
@@ -84,16 +191,20 @@ route.post("/signupdata", async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        msg: "Email and password are required",
+        msg: "Email and password are required.",
       });
     }
 
-    const userData = await usermodels.findOne({ email });
+    const cleanEmail = email.trim().toLowerCase();
+
+    const userData = await usermodels.findOne({
+      email: cleanEmail,
+    });
 
     if (!userData) {
-      return res.json({
+      return res.status(401).json({
         success: false,
-        msg: "Email not found",
+        msg: "Email not found.",
       });
     }
 
@@ -103,23 +214,145 @@ route.post("/signupdata", async (req, res) => {
     );
 
     if (!result) {
-      return res.json({
+      return res.status(401).json({
         success: false,
-        msg: "Password is incorrect",
+        msg: "Password is incorrect.",
       });
     }
 
-    // Create token
-    const tokenData = {
-      id: userData._id,
-      role: userData.role,
-    };
+    const role = String(userData.role).toLowerCase();
 
-    const token = jwt.sign(tokenData, JWT_SECRET);
-
-    console.log("Login token created");
+    const token = jwt.sign(
+      {
+        id: userData._id,
+        role: role,
+      },
+      JWT_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
 
     res.cookie("stc-operator", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.json({
+      success: true,
+      msg: "Login successful.",
+      role: role,
+      data: {
+        id: userData._id,
+        name: userData.name,
+        email: userData.email,
+        role: role,
+      },
+    });
+  } catch (error) {
+    console.log("LOGIN ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      msg: "Login failed.",
+      error: error.message,
+    });
+  }
+});
+
+// ======================================================
+// CURRENT USER
+// GET /user/me
+// ======================================================
+
+route.get("/me", authMiddleware, async (req, res) => {
+  try {
+    await dpconnection();
+
+    const user = await usermodels
+      .findById(req.user.id)
+      .select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        msg: "User not found.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    console.log("ME ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      msg: "Unable to get user.",
+    });
+  }
+});
+
+// ======================================================
+// AUTH CHECK
+// GET /user/auth-check
+// ======================================================
+
+route.get("/auth-check", authMiddleware, (req, res) => {
+  return res.json({
+    success: true,
+    msg: "Authentication verified.",
+    data: req.user,
+  });
+});
+
+// ======================================================
+// ADMIN CHECK
+// GET /user/admin-check
+// ======================================================
+
+route.get(
+  "/admin-check",
+  authMiddleware,
+  adminMiddleware,
+  (req, res) => {
+    return res.json({
+      success: true,
+      msg: "Admin verified.",
+      data: req.user,
+    });
+  }
+);
+
+// ======================================================
+// USER CHECK
+// GET /user/user-check
+// ======================================================
+
+route.get(
+  "/user-check",
+  authMiddleware,
+  userMiddleware,
+  (req, res) => {
+    return res.json({
+      success: true,
+      msg: "User verified.",
+      data: req.user,
+    });
+  }
+);
+
+// ======================================================
+// LOGOUT
+// POST /user/logout
+// ======================================================
+
+route.post("/logout", async (req, res) => {
+  try {
+    res.clearCookie("stc-operator", {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
@@ -127,101 +360,16 @@ route.post("/signupdata", async (req, res) => {
 
     return res.json({
       success: true,
-      msg: "You are logged in",
-      role: userData.role,
+      msg: "Logout successful.",
     });
-
   } catch (error) {
-    console.log(error);
+    console.log("LOGOUT ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      msg: error.message,
+      msg: "Logout failed.",
     });
   }
 });
-
-
-// ================= ADMIN CHECK =================
-
-route.get("/adincheck", async (req, res) => {
-  try {
-    await dpconnection();
-
-    const token = req.cookies?.["stc-operator"];
-
-    if (!token) {
-      return res.json({
-        success: false,
-        msg: "Token not found. Not authenticated",
-      });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    if (decoded.role !== "Admin") {
-      return res.json({
-        success: false,
-        msg: "Only admin allowed",
-      });
-    }
-
-    return res.json({
-      success: true,
-      msg: "Admin verified",
-      data: decoded,
-    });
-
-  } catch (error) {
-    console.log(error);
-
-    return res.status(401).json({
-      success: false,
-      msg: "Invalid token",
-    });
-  }
-});
-
-
-// ================= USER CHECK =================
-
-route.get("/usecheck", async (req, res) => {
-  try {
-    await dpconnection();
-
-    const token = req.cookies?.["stc-operator"];
-
-    if (!token) {
-      return res.json({
-        success: false,
-        msg: "Token not found. Not authenticated",
-      });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    if (decoded.role !== "user") {
-      return res.json({
-        success: false,
-        msg: "Only users allowed",
-      });
-    }
-
-    return res.json({
-      success: true,
-      msg: "User verified",
-      data: decoded,
-    });
-
-  } catch (error) {
-    console.log(error);
-
-    return res.status(401).json({
-      success: false,
-      msg: "Invalid token",
-    });
-  }
-});
-
 
 export default route;

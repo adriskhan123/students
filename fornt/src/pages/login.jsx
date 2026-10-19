@@ -1,182 +1,131 @@
-import React, { useState } from "react";
 import axios from "axios";
-import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { LogIn, Loader2 } from "lucide-react";
+
+const API = import.meta.env.VITE_backend_base_url;
 
 function Login() {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const navigate = useNavigate();
 
-  const [showPassword, setShowPassword] = useState(false);
+  const [loginData, setLoginData] = useState({ email: "", password: "" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    setLoginData({ ...loginData, [e.target.name]: e.target.value });
   };
 
-  const handleLogin = async (e) => {
+  async function handleLogin(e) {
     e.preventDefault();
-
-    console.log("Login Data:", formData);
+    setError("");
 
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_backend_base_url}/user/signupdata`,
-        formData,
-        {
-          withCredentials: true,
-        }
-      );
+      setLoading(true);
 
-      console.log("Login Response:", response.data);
+      const response = await axios.post(`${API}/user/signupdata`, loginData, {
+        withCredentials: true,
+      });
 
-      if (response.data.success === true) {
-        setFormData({
-          email: "",
-          password: "",
-        });
-
-        console.log("Login successful");
+      if (!response.data.success) {
+        setError(response.data.msg || "Login failed.");
+        return;
       }
-    } catch (error) {
-      console.error(
-        "Login Error:",
-        error.response?.data || error.message
+
+      navigate("/add-skilled", { replace: true });
+    } catch (err) {
+      console.log("Login error:", err.response?.data || err.message);
+      setError(
+        err.code === "ERR_NETWORK"
+          ? "Backend server is not running."
+          : err.response?.data?.msg || "Login failed."
       );
+    } finally {
+      setLoading(false);
     }
-  };
+  }
+
+  const input =
+    "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10";
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md">
-
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg">
-            <LogIn size={28} />
+    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-7 shadow-xl sm:p-8">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
+            <LogIn size={26} />
           </div>
-
-          <h1 className="text-3xl font-bold text-slate-900">
-            Welcome Back
-          </h1>
-
+          <h1 className="text-3xl font-black text-slate-900">Welcome Back</h1>
           <p className="mt-2 text-sm text-slate-500">
-            Login to your SkillConnect account
+            Login to continue to SkillConnect.
           </p>
         </div>
 
-        <div className="rounded-2xl bg-white p-6 sm:p-8 shadow-xl border border-slate-200">
+        {error && (
+          <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {error}
+          </div>
+        )}
 
-          <form onSubmit={handleLogin} className="space-y-5">
-
-            {/* Email */}
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Email Address
-              </label>
-
-              <div className="relative">
-                <Mail
-                  size={20}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                />
-
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="Enter your email"
-                  required
-                  className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Password
-              </label>
-
-              <div className="relative">
-                <Lock
-                  size={20}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                />
-
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Enter your password"
-                  required
-                  className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pl-10 pr-12 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
-                >
-                  {showPassword ? (
-                    <EyeOff size={20} />
-                  ) : (
-                    <Eye size={20} />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Remember / Forgot */}
-            <div className="flex items-center justify-between text-sm">
-
-              <label className="flex items-center gap-2 text-slate-600">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                />
-                Remember me
-              </label>
-
-              <button
-                type="button"
-                className="font-semibold text-blue-600 hover:text-blue-700"
-              >
-                Forgot password?
-              </button>
-
-            </div>
-
-            {/* Login Button */}
-            <button
-              type="submit"
-              className="flex w-full items-center justify-center gap-2 
-              rounded-xl bg-blue-600 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700 hover:shadow-xl active:scale-[0.98]"
-            >
-              <LogIn size={19} />
-              Login
-            </button>
-
-          </form>
-
-          {/* Register */}
-          <div className="mt-6 text-center text-sm text-slate-500">
-            Don't have an account?{" "}
-            <a
-              href="/register"
-              className="font-semibold text-blue-600 hover:text-blue-700"
-            >
-              Create Account
-            </a>
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-slate-700">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={loginData.email}
+              onChange={handleChange}
+              placeholder="Enter your email"
+              className={input}
+              required
+            />
           </div>
 
-        </div>
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-slate-700">
+              Password
+            </label>
+            <input
+              type="password"
+              name="password"
+              value={loginData.password}
+              onChange={handleChange}
+              placeholder="Enter your password"
+              className={input}
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? (
+              <>
+                <Loader2 size={19} className="animate-spin" />
+                Logging In...
+              </>
+            ) : (
+              <>
+                <LogIn size={19} />
+                Login
+              </>
+            )}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-slate-500">
+          Don't have an account?{" "}
+          <Link
+            to="/register"
+            className="font-bold text-blue-600 hover:text-blue-700 hover:underline"
+          >
+            Create Account
+          </Link>
+        </p>
       </div>
     </div>
   );

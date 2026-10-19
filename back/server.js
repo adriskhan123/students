@@ -1,42 +1,39 @@
-
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import dpconnection from "./dp/dpconnection.js";
-import homeroutes from "./route/home.routes.js";
 import cookieParser from "cookie-parser";
-import dotenv from "dotenv";
-import userroute from "./route/user.routes.js";
 
-dotenv.config();
+import dpconnection from "./dp/dpconnection.js";
+import userRoute from "./route/user.routes.js";
+import skillRoute from "./route/skill.routes.js";
 
 const app = express();
 
-// ================= CORS =================
-
 app.use(
   cors({
-    origin: process.env.frontend_url,
+    origin: "http://localhost:5173",
     credentials: true,
   })
 );
 
-// ================= MIDDLEWARE =================
-
-app.use(cookieParser());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-// ================= DATABASE =================
+app.use("/user", userRoute);
+app.use("/skill", skillRoute);
 
-dpconnection();
+const PORT = process.env.PORT || 3000;
 
-// ================= ROUTES =================
+const startServer = async () => {
+  await dpconnection();
 
-app.use("/user", userroute);
-app.use("/home", homeroutes);
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+};
 
-// ================= SERVER =================
-
-app.listen(process.env.PORT || 3000, () => {
-  console.log("Server running on port 3000");
+startServer().catch((error) => {
+  console.error("Server startup failed:", error.message);
+  process.exitCode = 1;
 });
-
