@@ -1,11 +1,10 @@
-
 import axios from "axios";
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   UserPlus,
   Loader2,
-  ShieldCheck,
+  BriefcaseBusiness,
   UserRound,
 } from "lucide-react";
 
@@ -23,7 +22,7 @@ function Register() {
     address: "",
     city: "",
     password: "",
-    role: "user",
+    role: "customer",
   });
 
   const [loading, setLoading] = useState(false);
@@ -36,42 +35,56 @@ function Register() {
     });
   };
 
-  async function handleRegister(e) {
+  const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
 
     try {
       setLoading(true);
 
+      const selectedRole = data.role.toLowerCase();
+
       const response = await axios.post(
         `${API}/user/userdata`,
-        data,
+        {
+          ...data,
+          role: selectedRole,
+        },
         {
           withCredentials: true,
         }
       );
 
       if (!response.data.success) {
-        setError(
-          response.data.msg || "Registration failed."
-        );
+        setError(response.data.msg || "Registration failed.");
         return;
       }
 
-      const registeredRole =
+      const role = String(
         response.data.role ||
         response.data.data?.role ||
-        data.role;
+        selectedRole
+      ).trim().toLowerCase();
 
-      if (registeredRole === "admin") {
-        navigate("/present-skilled", {
-          replace: true,
-        });
-      } else {
-        navigate("/add-skilled", {
-          replace: true,
-        });
+      console.log("Registered role:", role);
+
+      if (role === "customer") {
+        navigate("/find-workers", { replace: true });
+        return;
       }
+
+      if (role === "worker") {
+        navigate("/add-skilled", { replace: true });
+        return;
+      }
+
+      if (role === "admin") {
+        navigate("/all-skilled", { replace: true });
+        return;
+      }
+
+      setError("Invalid account role.");
+
     } catch (err) {
       console.log(
         "Register error:",
@@ -82,12 +95,13 @@ function Register() {
         err.code === "ERR_NETWORK"
           ? "Backend server is not running."
           : err.response?.data?.msg ||
+            err.response?.data?.error ||
             "Registration failed."
       );
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   const input =
     "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10";
@@ -97,7 +111,7 @@ function Register() {
       <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
 
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg">
             <UserPlus size={26} />
           </div>
 
@@ -116,10 +130,7 @@ function Register() {
           </div>
         )}
 
-        <form
-          onSubmit={handleRegister}
-          className="space-y-5"
-        >
+        <form onSubmit={handleRegister} className="space-y-5">
 
           <div>
             <label className="mb-2 block text-sm font-semibold text-slate-700">
@@ -133,17 +144,17 @@ function Register() {
                 onClick={() =>
                   setData({
                     ...data,
-                    role: "user",
+                    role: "worker",
                   })
                 }
-                className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition ${
-                  data.role === "user"
-                    ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50"
+                className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 font-bold transition ${
+                  data.role === "worker"
+                    ? "border-blue-600 bg-blue-600 text-white"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-blue-50"
                 }`}
               >
-                <UserRound size={18} />
-                User
+                <BriefcaseBusiness size={18} />
+                Worker
               </button>
 
               <button
@@ -151,17 +162,17 @@ function Register() {
                 onClick={() =>
                   setData({
                     ...data,
-                    role: "admin",
+                    role: "customer",
                   })
                 }
-                className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition ${
-                  data.role === "admin"
-                    ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50"
+                className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 font-bold transition ${
+                  data.role === "customer"
+                    ? "border-blue-600 bg-blue-600 text-white"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-blue-50"
                 }`}
               >
-                <ShieldCheck size={18} />
-                Admin
+                <UserRound size={18} />
+                Customer
               </button>
 
             </div>
@@ -195,7 +206,7 @@ function Register() {
                 name="fatherName"
                 value={data.fatherName}
                 onChange={handleChange}
-                placeholder="Enter father name"
+                placeholder="Father name"
                 className={input}
               />
             </div>
@@ -296,75 +307,53 @@ function Register() {
               name="password"
               value={data.password}
               onChange={handleChange}
-              placeholder="Create a password"
+              placeholder="Create password"
               className={input}
               required
             />
           </div>
 
-          <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4">
-            {data.role === "admin" ? (
-              <ShieldCheck
-                size={20}
-                className="mt-0.5 shrink-0 text-blue-600"
-              />
-            ) : (
-              <UserRound
-                size={20}
-                className="mt-0.5 shrink-0 text-blue-600"
-              />
-            )}
-
-            <p className="text-xs leading-5 text-blue-800">
-              You are creating a{" "}
-              <span className="font-bold">
-                {data.role === "admin"
-                  ? "Admin"
-                  : "User"}
-              </span>{" "}
-              account.
-            </p>
+          <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+            You are creating a{" "}
+            <span className="font-bold">
+              {data.role === "worker" ? "Worker" : "Customer"}
+            </span>{" "}
+            account.
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 font-bold text-white transition hover:bg-blue-700 disabled:opacity-60"
           >
             {loading ? (
               <>
-                <Loader2
-                  size={19}
-                  className="animate-spin"
-                />
+                <Loader2 size={19} className="animate-spin" />
                 Creating Account...
               </>
             ) : (
               <>
                 <UserPlus size={19} />
-                Create{" "}
-                {data.role === "admin"
-                  ? "Admin"
-                  : "User"}{" "}
-                Account
+                Create Account
               </>
             )}
           </button>
+
         </form>
 
         <p className="mt-6 text-center text-sm text-slate-500">
           Already have an account?{" "}
           <Link
             to="/login"
-            className="font-bold text-blue-600 hover:text-blue-700 hover:underline"
+            className="font-bold text-blue-600 hover:underline"
           >
             Login
           </Link>
         </p>
+
       </div>
     </div>
   );
 }
 
 export default Register;
-

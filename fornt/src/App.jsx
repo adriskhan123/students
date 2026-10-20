@@ -1,94 +1,117 @@
-
 import React from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Outlet, Navigate } from "react-router-dom";
 
-import Sidebar from "./components/sidebar.jsx";
-import AdminProtected from "./components/layout/AdminProtected.jsx";
-
-import Register from "./pages/Register";
-import Home from "./pages/Home";
-import Login from "./pages/login";
+import Home from "./pages/home";
 import About from "./pages/about";
-import MainChat from "./pages/manichat";
-import PostJob from "./pages/postjob";
+import Login from "./pages/login";
+import Register from "./pages/register";
 import FindWorker from "./pages/findworker";
 import FindWork from "./pages/findwork";
-import PresentSkilled from "./pages/PresentSkilled";
-import Allskiller from "./pages/allskiller";
+import PostJob from "./pages/postjob";
+import CustomerProtected from "./components/layout/CustomerProtected";
+import WorkerProtected from "./components/layout/WorkerProtected";
 import AddSkilled from "./pages/addskilled";
+import PresentSkilled from "./pages/presentskilled";
+import Allskiller from "./pages/allskiller";
 import Updateskiller from "./pages/updateskiller";
-import ViewDetail from "./pages/ViewDetail.jsx";
-import Loginpeple from "./pages/loginpeple.jsx";
+import ViewDetail from "./pages/ViewDetail";
+import MainChat from "./pages/manichat";
+import Sidebar from "./components/sidebar";
+import Navbar from "./components/Navbar";
 
-const HIDE_SIDEBAR_PATHS = [
-  "/",
-  "/about",
-  "/login",
-  "/register",
-  "/post-job",
-  "/find-workers",
-  "/find-work",
-  "/mainChat",
-  "/loginpeple",
-];
-
-function App() {
-  const location = useLocation();
-
-  const hideSidebar =
-    HIDE_SIDEBAR_PATHS.includes(location.pathname) ||
-    location.pathname.startsWith("/viewdetail/");
-
+// Top navbar only (no sidebar)
+function PublicLayout() {
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="flex">
-        {!hideSidebar && <Sidebar />}
-
-        <main className="min-w-0 flex-1">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-
-            <Route path="/find-workers" element={<FindWorker />} />
-            <Route path="/find-work" element={<FindWork />} />
-            <Route path="/mainChat" element={<MainChat />} />
-            <Route path="/loginpeple" element={<Loginpeple />} />
-
-            <Route
-              path="/post-job"
-              element={
-                <AdminProtected>
-                  <PostJob />
-                </AdminProtected>
-              }
-            />
-
-            <Route
-              path="/present-skilled"
-              element={<PresentSkilled />}
-            />
-            <Route path="/all-skilled" element={<Allskiller />} />
-            <Route path="/add-skilled" element={<AddSkilled />} />
-
-            <Route
-              path="/updateskiller/:id"
-              element={<Updateskiller />}
-            />
-
-            <Route
-              path="/viewdetail/:id"
-              element={<ViewDetail />}
-            />
-
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-      </div>
+    <div className="min-h-screen bg-slate-950">
+      <Navbar />
+      <Outlet />
     </div>
   );
 }
 
-export default App;
+// Sidebar only (no top navbar)
+function SidebarLayout() {
+  return (
+    <div className="flex min-h-screen bg-slate-100">
+      <Sidebar />
+      <main className="min-w-0 flex-1">
+        <Outlet />
+      </main>
+    </div>
+  );
+}
 
+function App() {
+  return (
+    <Routes>
+      {/* "/" shows ONLY the Home page (Home.jsx already has its own Navbar) */}
+      <Route path="/" element={<Home />} />
+
+      {/* Public pages: Navbar only */}
+      <Route element={<PublicLayout />}>
+        <Route path="/about" element={<About />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+      </Route>
+
+      {/* All other pages: Sidebar only */}
+      <Route element={<SidebarLayout />}>
+        <Route
+          path="/find-workers"
+          element={
+            <CustomerProtected>
+              <FindWorker />
+            </CustomerProtected>
+          }
+        />
+        <Route
+          path="/find-work"
+          element={
+            <WorkerProtected>
+              <FindWork />
+            </WorkerProtected>
+          }
+        />
+        <Route
+          path="/post-job"
+          element={
+            <CustomerProtected>
+              <PostJob />
+            </CustomerProtected>
+          }
+        />
+        <Route
+          path="/add-skilled"
+          element={
+            <WorkerProtected>
+              <AddSkilled />
+            </WorkerProtected>
+          }
+        />
+        <Route
+          path="/present-skilled"
+          element={
+            <WorkerProtected>
+              <PresentSkilled />
+            </WorkerProtected>
+          }
+        />
+        <Route
+          path="/updateskiller/:id"
+          element={
+            <WorkerProtected>
+              <Updateskiller />
+            </WorkerProtected>
+          }
+        />
+        <Route path="/viewdetail/:id" element={<ViewDetail />} />
+        <Route path="/all-skilled" element={<Allskiller />} />
+        <Route path="/mainChat" element={<MainChat />} />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+export default App;

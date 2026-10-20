@@ -18,17 +18,6 @@ import {
 
 const API = import.meta.env.VITE_backend_base_url;
 
-const hiddenPaths = [
-  "/",
-  "/about",
-  "/find-work",
-  "/find-workers",
-  "/post-job",
-  "/mainChat",
-  "/login",
-  "/register",
-];
-
 const menuItems = [
   {
     name: "Available Now",
@@ -280,10 +269,6 @@ function Sidebar() {
     };
   }, [open]);
 
-  if (hiddenPaths.includes(location.pathname)) {
-    return null;
-  }
-
   return (
     <>
       <aside className="sticky top-0 hidden h-screen w-72 shrink-0 border-r border-slate-800 lg:block">
@@ -345,4 +330,3 @@ function Sidebar() {
 }
 
 export default Sidebar;
-

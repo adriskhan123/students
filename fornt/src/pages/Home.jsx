@@ -294,6 +294,7 @@ function WorkerCard({ worker, index }) {
 }
 
 function Home() {
+  
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAllWorkers, setShowAllWorkers] = useState(false);

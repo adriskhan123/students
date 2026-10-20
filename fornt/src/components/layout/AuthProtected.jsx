@@ -1,16 +1,14 @@
-
+import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import axios from "axios";
 
 const API = import.meta.env.VITE_backend_base_url;
 
 function AuthProtected({ children }) {
-  const [status, setStatus] = useState("loading");
+  const [loading, setLoading] = useState(true);
+  const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
-    let active = true;
-
     const checkAuth = async () => {
       try {
         const response = await axios.get(
@@ -20,40 +18,33 @@ function AuthProtected({ children }) {
           }
         );
 
-        if (active) {
-          setStatus(
-            response.data.success ? "ok" : "denied"
-          );
-        }
+        setAllowed(response.data.success === true);
       } catch (error) {
-        if (active) {
-          setStatus("denied");
-        }
+        console.log(
+          "Authentication failed:",
+          error.response?.data || error.message
+        );
+
+        setAllowed(false);
+      } finally {
+        setLoading(false);
       }
     };
 
     checkAuth();
-
-    return () => {
-      active = false;
-    };
   }, []);
 
-  if (status === "loading") {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="flex items-center gap-3 rounded-2xl bg-white px-6 py-4 shadow-lg ring-1 ring-slate-200">
-          <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600" />
-
-          <p className="text-sm font-semibold text-slate-600">
-            Checking login...
-          </p>
+      <div className="flex min-h-screen items-center justify-center bg-slate-100">
+        <div className="rounded-xl bg-white px-6 py-4 font-semibold text-slate-700 shadow">
+          Checking account...
         </div>
       </div>
     );
   }
 
-  if (status === "denied") {
+  if (!allowed) {
     return <Navigate to="/login" replace />;
   }
 
@@ -61,4 +52,3 @@ function AuthProtected({ children }) {
 }
 
 export default AuthProtected;
-

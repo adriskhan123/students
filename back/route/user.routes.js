@@ -1,3 +1,4 @@
+
 import express from "express";
 import usermodels from "../models/user.models.js";
 import jwt from "jsonwebtoken";
@@ -61,10 +62,10 @@ const adminMiddleware = (req, res, next) => {
 };
 
 // ======================================================
-// NORMAL USER MIDDLEWARE
+// CUSTOMER MIDDLEWARE
 // ======================================================
 
-const userMiddleware = (req, res, next) => {
+const customerMiddleware = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       success: false,
@@ -72,10 +73,32 @@ const userMiddleware = (req, res, next) => {
     });
   }
 
-  if (String(req.user.role).toLowerCase() !== "user") {
+  if (String(req.user.role).toLowerCase() !== "customer") {
     return res.status(403).json({
       success: false,
-      msg: "Only normal users are allowed.",
+      msg: "Only customers are allowed.",
+    });
+  }
+
+  next();
+};
+
+// ======================================================
+// WORKER MIDDLEWARE
+// ======================================================
+
+const workerMiddleware = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      msg: "Not authenticated.",
+    });
+  }
+
+  if (String(req.user.role).toLowerCase() !== "worker") {
+    return res.status(403).json({
+      success: false,
+      msg: "Only workers are allowed.",
     });
   }
 
@@ -100,6 +123,7 @@ route.post("/userdata", async (req, res) => {
       age,
       address,
       city,
+      role,
     } = req.body;
 
     if (!email || !password || !name) {
@@ -122,25 +146,35 @@ route.post("/userdata", async (req, res) => {
       });
     }
 
+    const selectedRole = String(role || "customer")
+      .trim()
+      .toLowerCase();
+
+    if (!["customer", "worker"].includes(selectedRole)) {
+      return res.status(400).json({
+        success: false,
+        msg: "Please select customer or worker.",
+      });
+    }
+
     const hashpassword = await bcrypt.hash(password, 10);
 
-    // Public registration is always a normal user
     const newUser = await usermodels.create({
-      email: cleanEmail,
-      password: hashpassword,
       name: name.trim(),
-      fatherName,
-      phone,
-      age,
-      address,
-      city,
-      role: "user",
+      fatherName: fatherName?.trim() || "",
+      email: cleanEmail,
+      phone: phone?.trim() || "",
+      age: age || undefined,
+      address: address?.trim() || "",
+      city: city?.trim() || "",
+      password: hashpassword,
+      role: selectedRole,
     });
 
     const token = jwt.sign(
       {
         id: newUser._id,
-        role: "user",
+        role: selectedRole,
       },
       JWT_SECRET,
       {
@@ -157,13 +191,13 @@ route.post("/userdata", async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      msg: "User registered successfully.",
-      role: "user",
+      msg: "Registration successful.",
+      role: selectedRole,
       data: {
         id: newUser._id,
         name: newUser.name,
         email: newUser.email,
-        role: newUser.role,
+        role: selectedRole,
       },
     });
   } catch (error) {
@@ -208,24 +242,26 @@ route.post("/signupdata", async (req, res) => {
       });
     }
 
-    const result = await bcrypt.compare(
+    const passwordMatch = await bcrypt.compare(
       password,
       userData.password
     );
 
-    if (!result) {
+    if (!passwordMatch) {
       return res.status(401).json({
         success: false,
         msg: "Password is incorrect.",
       });
     }
 
-    const role = String(userData.role).toLowerCase();
+    const role = String(userData.role)
+      .trim()
+      .toLowerCase();
 
     const token = jwt.sign(
       {
         id: userData._id,
-        role: role,
+        role,
       },
       JWT_SECRET,
       {
@@ -243,12 +279,12 @@ route.post("/signupdata", async (req, res) => {
     return res.json({
       success: true,
       msg: "Login successful.",
-      role: role,
+      role,
       data: {
         id: userData._id,
         name: userData.name,
         email: userData.email,
-        role: role,
+        role,
       },
     });
   } catch (error) {
@@ -328,18 +364,36 @@ route.get(
 );
 
 // ======================================================
-// USER CHECK
-// GET /user/user-check
+// CUSTOMER CHECK
+// GET /user/customer-check
 // ======================================================
 
 route.get(
-  "/user-check",
+  "/customer-check",
   authMiddleware,
-  userMiddleware,
+  customerMiddleware,
   (req, res) => {
     return res.json({
       success: true,
-      msg: "User verified.",
+      msg: "Customer verified.",
+      data: req.user,
+    });
+  }
+);
+
+// ======================================================
+// WORKER CHECK
+// GET /user/worker-check
+// ======================================================
+
+route.get(
+  "/worker-check",
+  authMiddleware,
+  workerMiddleware,
+  (req, res) => {
+    return res.json({
+      success: true,
+      msg: "Worker verified.",
       data: req.user,
     });
   }
@@ -350,7 +404,7 @@ route.get(
 // POST /user/logout
 // ======================================================
 
-route.post("/logout", async (req, res) => {
+route.post("/logout", (req, res) => {
   try {
     res.clearCookie("stc-operator", {
       httpOnly: true,
@@ -373,3 +427,4 @@ route.post("/logout", async (req, res) => {
 });
 
 export default route;
+
